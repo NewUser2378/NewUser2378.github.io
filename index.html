@@ -89,9 +89,17 @@
         <button id="resetCanvas">Reset</button>
     </div>
 
+    <div id="example-container">
+        <h2>Example: Eye-shaped Points</h2>
+        <canvas id="exampleCanvas" width="800" height="600"></canvas>
+    </div>
+
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+
+        const exampleCanvas = document.getElementById('exampleCanvas');
+        const exampleCtx = exampleCanvas.getContext('2d');
 
         const points = [];
         let clusterCount = 0;
@@ -271,7 +279,39 @@
 
         // Изначально рисуем координатную сетку
         drawGrid();
+
+        // Функция для рисования примера с точками в форме глаза
+        function drawEyeShapePoints() {
+            const eyePoints = [];
+            const eyeWidth = 300;
+            const eyeHeight = 150;
+            const centerX = 400;
+            const centerY = 300;
+
+            // Создание точек в форме глаза
+            for (let i = 0; i < 250; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radiusX = Math.random() * eyeWidth;
+                const radiusY = Math.sqrt(eyeHeight ** 2 - (radiusX ** 2 * (eyeHeight / eyeWidth)));
+                const x = centerX + radiusX * Math.cos(angle);
+                const y = centerY + radiusY * Math.sin(angle);
+                eyePoints.push({ x, y });
+            }
+
+            // Рисуем точки
+            eyePoints.forEach(point => {
+                exampleCtx.fillStyle = 'black';
+                exampleCtx.beginPath();
+                exampleCtx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+                exampleCtx.fill();
+            });
+        }
+
+        // Нарисовать пример с точками
+        drawEyeShapePoints();
+
     </script>
 </body>
 </html>
+
 
