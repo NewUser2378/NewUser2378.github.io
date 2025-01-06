@@ -16,9 +16,15 @@
             color: white;
         }
 
-        #canvas-container {
-            position: relative;
-            margin-top: 20px;
+        .canvas-container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .canvas-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         canvas {
@@ -27,7 +33,7 @@
             background-color: #f0f0f0;
         }
 
-        #controls {
+        .controls {
             margin-top: 20px;
             display: flex;
             justify-content: center;
@@ -51,243 +57,206 @@
         button:hover {
             background-color: #0056b3;
         }
-
-        .axis-label {
-            position: absolute;
-            font-size: 12px;
-            color: #000;
-        }
-
-        .x-axis-label {
-            bottom: 0;
-            transform: translateX(-50%);
-        }
-
-        .y-axis-label {
-            left: 0;
-            transform: translateY(50%);
-        }
     </style>
 </head>
 <body>
     <h1>DBSCAN Visualization with Steps</h1>
 
-    <div id="canvas-container">
-        <canvas id="canvas" width="800" height="600"></canvas>
-    </div>
+    <div class="canvas-container">
+        <div class="canvas-section">
+            <h2>Custom Points</h2>
+            <canvas id="canvas" width="400" height="400"></canvas>
+            <div class="controls">
+                <label>
+                    Epsilon:
+                    <input type="number" id="epsilon" value="50" step="1" min="1">
+                </label>
+                <label>
+                    Min Points:
+                    <input type="number" id="minPts" value="3" step="1" min="1">
+                </label>
+                <button id="runDBSCAN">Run DBSCAN</button>
+                <button id="resetCanvas">Reset</button>
+                <button id="undoLastPoint">Undo Last Point</button>
+            </div>
+        </div>
 
-    <div id="controls">
-        <label>
-            Epsilon:
-            <input type="number" id="epsilon" value="50" step="1" min="1">
-        </label>
-        <label>
-            Min Points:
-            <input type="number" id="minPts" value="3" step="1" min="1">
-        </label>
-        <button id="runDBSCAN">Run DBSCAN</button>
-        <button id="resetCanvas">Reset</button>
-        <button id="resetColors">Reset Colors</button>
-        <button id="undoLastPoint">Undo Last Point</button>
+        <div class="canvas-section">
+            <h2>Eye Pattern</h2>
+            <canvas id="eyeCanvas" width="400" height="400"></canvas>
+            <div class="controls">
+                <label>
+                    Epsilon:
+                    <input type="number" id="eyeEpsilon" value="10" step="1" min="1">
+                </label>
+                <label>
+                    Min Points:
+                    <input type="number" id="eyeMinPts" value="3" step="1" min="1">
+                </label>
+                <button id="runEyeDBSCAN">Run DBSCAN</button>
+                <button id="resetEyeCanvas">Reset</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const points = [];
-        let clusterCount = 0;
-        let clusterColors = [];
-        let isDragging = false;
-        let dragPointIndex = -1;
+        function setupCanvas(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const points = [];
+            let clusterColors = [];
 
-        function drawGrid() {
-            const step = 50;
-            ctx.strokeStyle = "#e0e0e0";
-            ctx.lineWidth = 0.5;
-
-            for (let x = step; x < canvas.width; x += step) {
+            function drawPoint(x, y, color = 'black') {
+                ctx.fillStyle = color;
                 ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fill();
             }
 
-            for (let y = step; y < canvas.height; y += step) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
+            function clearCanvas() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
 
-            for (let x = 0; x < canvas.width; x += step) {
-                ctx.fillStyle = "#000";
-                ctx.fillText(x, x + 2, canvas.height - 2);
+            function redrawPoints() {
+                clearCanvas();
+                points.forEach(point => drawPoint(point.x, point.y, point.color || 'gray'));
             }
 
-            for (let y = 0; y < canvas.height; y += step) {
-                ctx.fillStyle = "#000";
-                ctx.fillText(y, 2, y + 12);
+            function addPoint(x, y) {
+                points.push({ x, y });
+                drawPoint(x, y, 'gray');
             }
-        }
 
-        function drawPoint(x, y, color = 'black') {
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(x, y, 5, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawGrid();
-        }
-
-        function redrawPoints() {
-            clearCanvas();
-            points.forEach(point => drawPoint(point.x, point.y, point.color || 'gray'));
-        }
-
-        canvas.addEventListener('mousedown', (e) => {
-            const x = e.offsetX;
-            const y = e.offsetY;
-            dragPointIndex = points.findIndex(point => Math.hypot(point.x - x, point.y - y) < 5);
-
-            if (dragPointIndex >= 0) {
-                isDragging = true;
-            } else {
-                addPoint(x, y);
+            function distance(p1, p2) {
+                return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
             }
-        });
 
-        canvas.addEventListener('mousemove', (e) => {
-            if (isDragging && dragPointIndex >= 0) {
-                const x = e.offsetX;
-                const y = e.offsetY;
-                points[dragPointIndex].x = x;
-                points[dragPointIndex].y = y;
-                redrawPoints();
+            function regionQuery(point, epsilon) {
+                return points.filter(p => distance(p, point) <= epsilon);
             }
-        });
 
-        canvas.addEventListener('mouseup', () => {
-            isDragging = false;
-            dragPointIndex = -1;
-        });
+            function delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
 
-        function addPoint(x, y) {
-            points.push({ x, y });
-            drawPoint(x, y, 'gray');
-        }
+            async function dbscanWithSteps(epsilon, minPts) {
+                const clusters = [];
+                const noise = [];
+                const visited = new Set();
+                let clusterCount = 0;
 
-        function distance(p1, p2) {
-            return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
-        }
+                async function expandCluster(point, neighbors, cluster) {
+                    const clusterColor = clusterColors[clusterCount];
+                    cluster.push(point);
+                    drawPoint(point.x, point.y, clusterColor);
+                    await delay(100);
 
-        function regionQuery(point, epsilon) {
-            return points.filter(p => distance(p, point) <= epsilon);
-        }
+                    for (const neighbor of neighbors) {
+                        if (!visited.has(neighbor)) {
+                            visited.add(neighbor);
+                            const newNeighbors = regionQuery(neighbor, epsilon);
 
-        function drawCircle(x, y, radius, color = 'rgba(0, 0, 255, 0.2)') {
-            ctx.strokeStyle = color;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.stroke();
-        }
+                            if (newNeighbors.length >= minPts) {
+                                neighbors.push(...newNeighbors);
+                            }
+                        }
 
-        async function dbscanWithSteps(epsilon, minPts) {
-            const clusters = [];
-            const noise = [];
-            const visited = new Set();
-
-            async function expandCluster(point, neighbors, cluster) {
-                const clusterColor = clusterColors[clusterCount];
-                cluster.push(point);
-                drawPoint(point.x, point.y, clusterColor);
-                await delay(500);
-
-                for (const neighbor of neighbors) {
-                    if (!visited.has(neighbor)) {
-                        visited.add(neighbor);
-                        const newNeighbors = regionQuery(neighbor, epsilon);
-                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor);
-                        await delay(500);
-
-                        if (newNeighbors.length >= minPts) {
-                            neighbors.push(...newNeighbors);
+                        if (!clusters.flat().includes(neighbor)) {
+                            cluster.push(neighbor);
+                            drawPoint(neighbor.x, neighbor.y, clusterColor);
                         }
                     }
+                }
 
-                    if (!clusters.flat().includes(neighbor)) {
-                        cluster.push(neighbor);
-                        drawPoint(neighbor.x, neighbor.y, clusterColor);
+                for (const point of points) {
+                    if (visited.has(point)) continue;
+                    visited.add(point);
+                    const neighbors = regionQuery(point, epsilon);
+
+                    if (neighbors.length < minPts) {
+                        noise.push(point);
+                        drawPoint(point.x, point.y, 'gray');
+                    } else {
+                        clusterCount++;
+                        const clusterColor = `hsl(${(clusterCount * 100) % 360}, 100%, 50%)`;
+                        clusterColors.push(clusterColor);
+                        const cluster = [];
+                        await expandCluster(point, neighbors, cluster);
+                        clusters.push(cluster);
                     }
                 }
+
+                return { clusters, noise };
             }
 
-            for (const point of points) {
-                if (visited.has(point)) continue;
-                visited.add(point);
-                const neighbors = regionQuery(point, epsilon);
+            return { 
+                canvas, ctx, points, 
+                addPoint, redrawPoints, clearCanvas, dbscanWithSteps
+            };
+        }
 
-                drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)');
-                drawPoint(point.x, point.y, 'black');
-                await delay(500);
+        const customCanvas = setupCanvas('canvas');
+        const eyeCanvas = setupCanvas('eyeCanvas');
 
-                if (neighbors.length < minPts) {
-                    noise.push(point);
-                    drawPoint(point.x, point.y, 'gray');
-                } else {
-                    clusterCount++;
-                    const clusterColor = `hsl(${(clusterCount * 100) % 360}, 100%, 50%)`;
-                    clusterColors.push(clusterColor);
-                    const cluster = [];
-                    await expandCluster(point, neighbors, cluster);
-                    clusters.push(cluster);
-                }
+       
+        function generateEyePattern() {
+            const centerX = eyeCanvas.canvas.width / 2;
+            const centerY = eyeCanvas.canvas.height / 2;
+            const radius = 150;
+
+            for (let i = 0; i < 250; i++) {
+                const angle = Math.random() * 2 * Math.PI;
+                const r = radius * Math.sqrt(Math.random());
+                const x = centerX + r * Math.cos(angle);
+                const y = centerY + r * Math.sin(angle);
+                eyeCanvas.addPoint(x, y);
             }
 
-            return { clusters, noise };
+            eyeCanvas.redrawPoints();
         }
 
-        function visualizeResults({ clusters, noise }) {
-            clearCanvas();
-
-            clusters.forEach((cluster, idx) => {
-                cluster.forEach(point => drawPoint(point.x, point.y, clusterColors[idx]));
-            });
-
-            noise.forEach(point => drawPoint(point.x, point.y, 'gray'));
-        }
-
-        function delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
+        
+        customCanvas.canvas.addEventListener('click', (e) => {
+            const x = e.offsetX;
+            const y = e.offsetY;
+            customCanvas.addPoint(x, y);
+        });
 
         document.getElementById('runDBSCAN').addEventListener('click', async () => {
             const epsilon = parseFloat(document.getElementById('epsilon').value);
             const minPts = parseInt(document.getElementById('minPts').value, 10);
 
-            const results = await dbscanWithSteps(epsilon, minPts);
-            visualizeResults(results);
+            const results = await customCanvas.dbscanWithSteps(epsilon, minPts);
+            customCanvas.redrawPoints();
         });
 
         document.getElementById('resetCanvas').addEventListener('click', () => {
-            points.length = 0;
-            clusterCount = 0;
-            clusterColors = [];
-            clearCanvas();
-        });
-
-        document.getElementById('resetColors').addEventListener('click', () => {
-            redrawPoints();
+            customCanvas.points.length = 0;
+            customCanvas.clearCanvas();
         });
 
         document.getElementById('undoLastPoint').addEventListener('click', () => {
-            points.pop();
-            redrawPoints();
+            customCanvas.points.pop();
+            customCanvas.redrawPoints();
         });
 
-        drawGrid();
+        
+        document.getElementById('runEyeDBSCAN').addEventListener('click', async () => {
+            const epsilon = parseFloat(document.getElementById('eyeEpsilon').value);
+            const minPts = parseInt(document.getElementById('eyeMinPts').value, 10);
+
+            const results = await eyeCanvas.dbscanWithSteps(epsilon, minPts);
+            eyeCanvas.redrawPoints();
+        });
+
+        document.getElementById('resetEyeCanvas').addEventListener('click', () => {
+            eyeCanvas.points.length = 0;
+            eyeCanvas.clearCanvas();
+            generateEyePattern();
+        });
+
+        
+        generateEyePattern();
     </script>
 </body>
 </html>
