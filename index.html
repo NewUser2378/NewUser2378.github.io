@@ -217,6 +217,18 @@
                 drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)'); // Окружность вокруг точки
                 await delay(500);
 
+                // Мигание точек в радиусе
+                for (let i = 0; i < 3; i++) {
+                    for (const neighbor of neighbors) {
+                        drawPoint(neighbor.x, neighbor.y, 'yellow'); // Мигающие точки в желтом
+                    }
+                    await delay(300);
+                    for (const neighbor of neighbors) {
+                        drawPoint(neighbor.x, neighbor.y, 'black'); // Сбрасываем цвет обратно
+                    }
+                    await delay(300);
+                }
+
                 if (neighbors.length < minPts) {
                     noise.push(point);
                     drawPoint(point.x, point.y, 'gray'); // Шум окрашен в серый
@@ -272,4 +284,5 @@
     </script>
 </body>
 </html>
+
 
