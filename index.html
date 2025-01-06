@@ -87,6 +87,7 @@
         </label>
         <button id="runDBSCAN">Run DBSCAN</button>
         <button id="resetCanvas">Reset</button>
+        <button id="resetColors">Reset Colors</button>
     </div>
 
     <script>
@@ -226,7 +227,8 @@
                     drawPoint(point.x, point.y, 'gray'); // Шум окрашен в серый
                 } else {
                     clusterCount++;
-                    clusterColors.push(`hsl(${(clusterCount * 100) % 360}, 100%, 50%)`); // Создаем уникальный цвет для нового кластера
+                    const clusterColor = `hsl(${(clusterCount * 100) % 360}, 100%, 50%)`;
+                    clusterColors.push(clusterColor); // Создаем уникальный цвет для нового кластера
                     const cluster = [];
                     await expandCluster(point, neighbors, cluster);
                     clusters.push(cluster);
@@ -269,6 +271,13 @@
             clusterCount = 0;
             clusterColors = [];
             clearCanvas();
+        });
+
+        // Сброс цветов точек
+        document.getElementById('resetColors').addEventListener('click', () => {
+            clearCanvas();
+            drawGrid();
+            points.forEach(point => drawPoint(point.x, point.y, 'black'));
         });
 
         // Изначально рисуем координатную сетку
