@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DBSCAN Visualization</title>
+    <title>DBSCAN Visualization with Steps</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -34,7 +34,7 @@
     </style>
 </head>
 <body>
-    <h1>DBSCAN Visualization</h1>
+    <h1>DBSCAN Visualization with Steps</h1>
 
     <div id="canvas-container">
         <canvas id="canvas" width="800" height="600"></canvas>
@@ -58,8 +58,6 @@
         const ctx = canvas.getContext('2d');
 
         const points = [];
-        const EPSILON = 50;
-        const MIN_PTS = 3;
 
         let isDragging = false;
         let startX, startY;
@@ -99,17 +97,29 @@
             return points.filter(p => distance(p, point) <= epsilon);
         }
 
-        function dbscan(epsilon, minPts) {
+        function drawCircle(x, y, radius, color = 'rgba(0, 0, 255, 0.2)') {
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        async function dbscanWithSteps(epsilon, minPts) {
             const clusters = [];
             const noise = [];
             const visited = new Set();
 
-            function expandCluster(point, neighbors, cluster) {
+            async function expandCluster(point, neighbors, cluster) {
                 cluster.push(point);
-                neighbors.forEach(neighbor => {
+                drawCircle(point.x, point.y, epsilon, 'rgba(0, 255, 0, 0.3)');
+                await delay(500);
+
+                for (const neighbor of neighbors) {
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
                         const newNeighbors = regionQuery(neighbor, epsilon);
+                        drawCircle(neighbor.x, neighbor.y, epsilon, 'rgba(0, 255, 0, 0.3)');
+                        await delay(500);
                         if (newNeighbors.length >= minPts) {
                             neighbors.push(...newNeighbors);
                         }
@@ -117,21 +127,25 @@
                     if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
                     }
-                });
+                }
             }
 
-            points.forEach(point => {
-                if (visited.has(point)) return;
+            for (const point of points) {
+                if (visited.has(point)) continue;
                 visited.add(point);
                 const neighbors = regionQuery(point, epsilon);
+
+                drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)');
+                await delay(500);
+
                 if (neighbors.length < minPts) {
                     noise.push(point);
                 } else {
                     const cluster = [];
-                    expandCluster(point, neighbors, cluster);
+                    await expandCluster(point, neighbors, cluster);
                     clusters.push(cluster);
                 }
-            });
+            }
 
             return { clusters, noise };
         }
@@ -149,11 +163,15 @@
             noise.forEach(point => drawPoint(point.x, point.y, 'gray'));
         }
 
-        document.getElementById('runDBSCAN').addEventListener('click', () => {
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        document.getElementById('runDBSCAN').addEventListener('click', async () => {
             const epsilon = parseFloat(document.getElementById('epsilon').value);
             const minPts = parseInt(document.getElementById('minPts').value, 10);
 
-            const results = dbscan(epsilon, minPts);
+            const results = await dbscanWithSteps(epsilon, minPts);
             visualizeResults(results);
         });
 
