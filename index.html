@@ -128,16 +128,17 @@
 
         function drawPoints() {
             const svg = d3.select('#canvas');
-            svg.selectAll('*').remove();
+            svg.selectAll('circle').remove();
 
-            svg.selectAll('.point')
-                .data(points)
-                .enter()
-                .append('circle')
-                .attr('cx', d => d[0])
-                .attr('cy', d => d[1])
-                .attr('r', 5)
-                .attr('class', 'point');
+            points.forEach(([x, y]) => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', x);
+                circle.setAttribute('cy', y);
+                circle.setAttribute('r', 5);
+                circle.setAttribute('class', 'point');
+                circle.setAttribute('fill', 'steelblue');
+                svg.appendChild(circle);
+            });
         }
 
         runButton.addEventListener('click', () => {
@@ -152,38 +153,50 @@
 
         function visualizeClusters(clusters, noise) {
             const svg = d3.select('#canvas');
-            svg.selectAll('*').remove();
+            svg.selectAll('circle').remove();
 
             const colors = d3.schemeCategory10;
 
             clusters.forEach((cluster, index) => {
-                svg.selectAll(`.cluster-${index}`)
-                    .data(cluster.map(i => points[i]))
-                    .enter()
-                    .append('circle')
-                    .attr('cx', d => d[0])
-                    .attr('cy', d => d[1])
-                    .attr('r', 5)
-                    .attr('fill', colors[index % colors.length])
-                    .attr('class', `cluster cluster-${index}`);
+                cluster.forEach((pointIndex) => {
+                    const [x, y] = points[pointIndex];
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', x);
+                    circle.setAttribute('cy', y);
+                    circle.setAttribute('r', 5);
+                    circle.setAttribute('fill', colors[index % colors.length]);
+                    circle.setAttribute('class', `cluster cluster-${index}`);
+                    svg.appendChild(circle);
+                });
             });
 
-            svg.selectAll('.noise')
-                .data(noise.map(i => points[i]))
-                .enter()
-                .append('circle')
-                .attr('cx', d => d[0])
-                .attr('cy', d => d[1])
-                .attr('r', 5)
-                .attr('fill', 'red')
-                .attr('class', 'noise');
+            noise.forEach((pointIndex) => {
+                const [x, y] = points[pointIndex];
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', x);
+                circle.setAttribute('cy', y);
+                circle.setAttribute('r', 5);
+                circle.setAttribute('fill', 'red');
+                circle.setAttribute('class', 'noise');
+                svg.appendChild(circle);
+            });
         }
     </script>
 
     <!-- Include D3.js locally -->
     <script>
+        // Minimal D3.js for use locally
         const d3 = {
-            select: (selector) => document.querySelector(selector),
+            select: (selector) => {
+                const element = document.querySelector(selector);
+                element.selectAll = function (tagName) {
+                    return Array.from(this.querySelectorAll(tagName));
+                };
+                element.appendChild = function (child) {
+                    this.appendChild(child);
+                };
+                return element;
+            },
             schemeCategory10: [
                 '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
                 '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
