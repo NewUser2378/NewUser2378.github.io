@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DBSCAN Visualization with Eye</title>
+    <title>DBSCAN Visualization with Steps</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <style>
         body {
@@ -19,9 +19,6 @@
         #canvas-container {
             position: relative;
             margin-top: 20px;
-            display: flex;
-            flex-direction: row;
-            gap: 20px;
         }
 
         canvas {
@@ -34,8 +31,6 @@
             margin-top: 20px;
             display: flex;
             justify-content: center;
-            flex-wrap: wrap;
-            gap: 10px;
         }
 
         label {
@@ -79,7 +74,6 @@
 
     <div id="canvas-container">
         <canvas id="canvas" width="800" height="600"></canvas>
-        <canvas id="eyeCanvas" width="800" height="600"></canvas>
     </div>
 
     <div id="controls">
@@ -96,22 +90,18 @@
         <button id="resetColors">Reset Colors</button>
         <button id="undoLastPoint">Undo Last Point</button>
         <button id="generateEye">Generate Eye</button>
-        <button id="runDBSCANOnEye">Run DBSCAN on Eye</button>
     </div>
 
     <script>
         const canvas = document.getElementById('canvas');
-        const eyeCanvas = document.getElementById('eyeCanvas');
         const ctx = canvas.getContext('2d');
-        const eyeCtx = eyeCanvas.getContext('2d');
         const points = [];
-        const eyePoints = [];
         let clusterCount = 0;
         let clusterColors = [];
         let isDragging = false;
         let dragPointIndex = -1;
 
-        function drawGrid(ctx, canvas) {
+        function drawGrid() {
             const step = 50;
             ctx.strokeStyle = "#e0e0e0";
             ctx.lineWidth = 0.5;
@@ -141,21 +131,21 @@
             }
         }
 
-        function drawPoint(ctx, x, y, color = 'black') {
+        function drawPoint(x, y, color = 'black') {
             ctx.fillStyle = color;
             ctx.beginPath();
             ctx.arc(x, y, 5, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        function clearCanvas(ctx, canvas) {
+        function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawGrid(ctx, canvas);
+            drawGrid();
         }
 
-        function redrawPoints(ctx, canvas, points) {
-            clearCanvas(ctx, canvas);
-            points.forEach(point => drawPoint(ctx, point.x, point.y, point.color || 'gray'));
+        function redrawPoints() {
+            clearCanvas();
+            points.forEach(point => drawPoint(point.x, point.y, point.color || 'gray'));
         }
 
         canvas.addEventListener('mousedown', (e) => {
@@ -166,8 +156,7 @@
             if (dragPointIndex >= 0) {
                 isDragging = true;
             } else {
-                addPoint(points, x, y);
-                drawPoint(ctx, x, y, 'gray');
+                addPoint(x, y);
             }
         });
 
@@ -177,7 +166,7 @@
                 const y = e.offsetY;
                 points[dragPointIndex].x = x;
                 points[dragPointIndex].y = y;
-                redrawPoints(ctx, canvas, points);
+                redrawPoints();
             }
         });
 
@@ -186,19 +175,27 @@
             dragPointIndex = -1;
         });
 
-        function addPoint(points, x, y) {
+        function addPoint(x, y) {
             points.push({ x, y });
+            drawPoint(x, y, 'gray');
         }
 
         function distance(p1, p2) {
             return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
         }
 
-        function regionQuery(points, point, epsilon) {
+        function regionQuery(point, epsilon) {
             return points.filter(p => distance(p, point) <= epsilon);
         }
 
-        async function dbscanWithSteps(ctx, canvas, points, epsilon, minPts) {
+        function drawCircle(x, y, radius, color = 'rgba(0, 0, 255, 0.2)') {
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        async function dbscanWithSteps(epsilon, minPts) {
             const clusters = [];
             const noise = [];
             const visited = new Set();
@@ -206,13 +203,16 @@
             async function expandCluster(point, neighbors, cluster) {
                 const clusterColor = clusterColors[clusterCount];
                 cluster.push(point);
-                drawPoint(ctx, point.x, point.y, clusterColor);
+                drawPoint(point.x, point.y, clusterColor);
                 await delay(500);
 
                 for (const neighbor of neighbors) {
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
-                        const newNeighbors = regionQuery(points, neighbor, epsilon);
+                        const newNeighbors = regionQuery(neighbor, epsilon);
+                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor);
+                        await delay(500);
+
                         if (newNeighbors.length >= minPts) {
                             neighbors.push(...newNeighbors);
                         }
@@ -220,7 +220,7 @@
 
                     if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
-                        drawPoint(ctx, neighbor.x, neighbor.y, clusterColor);
+                        drawPoint(neighbor.x, neighbor.y, clusterColor);
                     }
                 }
             }
@@ -228,11 +228,15 @@
             for (const point of points) {
                 if (visited.has(point)) continue;
                 visited.add(point);
-                const neighbors = regionQuery(points, point, epsilon);
+                const neighbors = regionQuery(point, epsilon);
+
+                drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)');
+                drawPoint(point.x, point.y, 'black');
+                await delay(500);
 
                 if (neighbors.length < minPts) {
                     noise.push(point);
-                    drawPoint(ctx, point.x, point.y, 'gray');
+                    drawPoint(point.x, point.y, 'gray');
                 } else {
                     clusterCount++;
                     const clusterColor = `hsl(${(clusterCount * 100) % 360}, 100%, 50%)`;
@@ -246,72 +250,69 @@
             return { clusters, noise };
         }
 
-        function generateEye() {
-            eyePoints.length = 0;
-            clearCanvas(eyeCtx, eyeCanvas);
+        function visualizeResults({ clusters, noise }) {
+            clearCanvas();
 
-            
-            const centerX = eyeCanvas.width / 2;
-            const centerY = eyeCanvas.height / 2;
-            const radius = 200;
+            clusters.forEach((cluster, idx) => {
+                cluster.forEach(point => drawPoint(point.x, point.y, clusterColors[idx]));
+            });
 
-            for (let i = 0; i < 100; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const r = Math.random() * radius;
-                const x = centerX + r * Math.cos(angle);
-                const y = centerY + r * Math.sin(angle);
-                addPoint(eyePoints, x, y);
-                drawPoint(eyeCtx, x, y, 'gray');
-            }
-
-            for (let i = 0; i < 150; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const r = radius * 0.3 + Math.random() * radius * 0.1;
-                const x = centerX + r * Math.cos(angle);
-                const y = centerY + r * Math.sin(angle);
-                addPoint(eyePoints, x, y);
-                drawPoint(eyeCtx, x, y, 'gray');
-            }
+            noise.forEach(point => drawPoint(point.x, point.y, 'gray'));
         }
 
         function delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
+        function generateEye() {
+            const eyeCenterX = 400;
+            const eyeCenterY = 300;
+            const eyeRadiusX = 120;
+            const eyeRadiusY = 80;
+            const pointsCount = 250;
+
+            for (let i = 0; i < pointsCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radiusX = Math.random() * eyeRadiusX;
+                const radiusY = Math.random() * eyeRadiusY;
+                const x = eyeCenterX + radiusX * Math.cos(angle);
+                const y = eyeCenterY + radiusY * Math.sin(angle);
+                points.push({ x, y });
+                drawPoint(x, y, 'gray');
+            }
+        }
+
         document.getElementById('runDBSCAN').addEventListener('click', async () => {
             const epsilon = parseFloat(document.getElementById('epsilon').value);
             const minPts = parseInt(document.getElementById('minPts').value, 10);
 
-            const results = await dbscanWithSteps(ctx, canvas, points, epsilon, minPts);
+            const results = await dbscanWithSteps(epsilon, minPts);
+            visualizeResults(results);
         });
 
         document.getElementById('resetCanvas').addEventListener('click', () => {
             points.length = 0;
             clusterCount = 0;
             clusterColors = [];
-            clearCanvas(ctx, canvas);
+            clearCanvas();
         });
 
         document.getElementById('resetColors').addEventListener('click', () => {
-            redrawPoints(ctx, canvas, points);
+            redrawPoints();
         });
 
         document.getElementById('undoLastPoint').addEventListener('click', () => {
             points.pop();
-            redrawPoints(ctx, canvas, points);
+            redrawPoints();
         });
 
-        document.getElementById('generateEye').addEventListener('click', generateEye);
-
-        document.getElementById('runDBSCANOnEye').addEventListener('click', async () => {
-            const epsilon = parseFloat(document.getElementById('epsilon').value);
-            const minPts = parseInt(document.getElementById('minPts').value, 10);
-
-            const results = await dbscanWithSteps(eyeCtx, eyeCanvas, eyePoints, epsilon, minPts);
+        
+        document.getElementById('generateEye').addEventListener('click', () => {
+            points.length = 0;
+            generateEye();
         });
 
-        drawGrid(ctx, canvas);
-        drawGrid(eyeCtx, eyeCanvas);
+        drawGrid();
     </script>
 </body>
 </html>
