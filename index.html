@@ -147,7 +147,7 @@
         // Функция для добавления точки
         function addPoint(x, y) {
             points.push({ x, y });
-            drawPoint(x, y);
+            drawPoint(x, y, 'gray'); // Все точки изначально серые
         }
 
         // Функция для рисования точки
@@ -277,7 +277,7 @@
         document.getElementById('resetColors').addEventListener('click', () => {
             clearCanvas();
             drawGrid();
-            points.forEach(point => drawPoint(point.x, point.y, 'black'));
+            points.forEach(point => drawPoint(point.x, point.y, 'gray')); // Все точки серые
         });
 
         // Изначально рисуем координатную сетку
@@ -285,5 +285,4 @@
     </script>
 </body>
 </html>
-
 
