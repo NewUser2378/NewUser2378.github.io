@@ -180,15 +180,15 @@
             async function expandCluster(point, neighbors, cluster) {
                 cluster.push(point);
                 const clusterColor = clusterColors[clusterCount];
-                drawCircle(point.x, point.y, epsilon, clusterColor);
-                drawPoint(point.x, point.y, clusterColor);
+                drawCircle(point.x, point.y, epsilon, clusterColor); 
+                drawPoint(point.x, point.y, clusterColor); 
                 await delay(500);
 
                 for (const neighbor of neighbors) {
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
                         const newNeighbors = regionQuery(neighbor, epsilon);
-                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor);
+                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor);  
                         await delay(500);
                         if (newNeighbors.length >= minPts) {
                             neighbors.push(...newNeighbors);
@@ -196,7 +196,7 @@
                     }
                     if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
-                        drawPoint(neighbor.x, neighbor.y, clusterColor);
+                        drawPoint(neighbor.x, neighbor.y, clusterColor);  
                     }
                 }
             }
