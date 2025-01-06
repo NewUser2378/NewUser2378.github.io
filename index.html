@@ -92,6 +92,8 @@
     <div id="example-container">
         <h2>Example: Eye-shaped Points</h2>
         <canvas id="exampleCanvas" width="800" height="600"></canvas>
+        <button id="runDBSCANExample">Run DBSCAN on Example</button>
+        <button id="resetExampleCanvas">Reset Example</button>
     </div>
 
     <script>
@@ -102,6 +104,7 @@
         const exampleCtx = exampleCanvas.getContext('2d');
 
         const points = [];
+        const examplePoints = [];
         let clusterCount = 0;
         let clusterColors = [];
 
@@ -139,7 +142,7 @@
             }
         }
 
-        // Обработчик событий для добавления точек
+        // Обработчик событий для добавления точек на основной канвас
         canvas.addEventListener('mousedown', (e) => {
             isDragging = true;
             startX = e.offsetX;
@@ -151,13 +154,13 @@
             addPoint(e.offsetX, e.offsetY);
         });
 
-        // Функция для добавления точки
+        // Функция для добавления точки на основной канвас
         function addPoint(x, y) {
             points.push({ x, y });
             drawPoint(x, y);
         }
 
-        // Функция для рисования точки
+        // Функция для рисования точки на канвасе
         function drawPoint(x, y, color = 'black') {
             ctx.fillStyle = color;
             ctx.beginPath();
@@ -167,6 +170,9 @@
 
         // Очистить канвас
         function clearCanvas() {
+            points.length = 0;
+            clusterCount = 0;
+            clusterColors = [];
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawGrid(); // Рисуем сетку заново
         }
@@ -198,23 +204,20 @@
             async function expandCluster(point, neighbors, cluster) {
                 cluster.push(point);
                 const clusterColor = clusterColors[clusterCount];
-                drawCircle(point.x, point.y, epsilon, clusterColor); // Окружность в цвет кластера
-                drawPoint(point.x, point.y, clusterColor); // Точка в цвет кластера
+                drawPoint(point.x, point.y, clusterColor); // Окрашиваем точку в цвет кластера
                 await delay(500);
 
                 for (const neighbor of neighbors) {
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
                         const newNeighbors = regionQuery(neighbor, epsilon);
-                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor); // Окружность в цвет кластера
-                        await delay(500);
                         if (newNeighbors.length >= minPts) {
                             neighbors.push(...newNeighbors);
                         }
                     }
                     if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
-                        drawPoint(neighbor.x, neighbor.y, clusterColor); // Точка в цвет кластера
+                        drawPoint(neighbor.x, neighbor.y, clusterColor); // Окрашиваем соседнюю точку
                     }
                 }
             }
@@ -224,12 +227,9 @@
                 visited.add(point);
                 const neighbors = regionQuery(point, epsilon);
 
-                drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)'); // Окружность вокруг точки
-                await delay(500);
-
                 if (neighbors.length < minPts) {
                     noise.push(point);
-                    drawPoint(point.x, point.y, 'gray'); // Шум окрашен в серый
+                    drawPoint(point.x, point.y, 'gray'); // Точка окрашена в серый
                 } else {
                     if (clusterCount === 0) {
                         clusterColors.push(`hsl(${(clusterCount * 100) % 360}, 100%, 50%)`);
@@ -244,7 +244,7 @@
             return { clusters, noise };
         }
 
-        // Визуализация результатов (кластеров и шума)
+        // Визуализация результатов
         function visualizeResults({ clusters, noise }) {
             clearCanvas();
 
@@ -262,7 +262,7 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // Запуск DBSCAN при нажатии кнопки
+        // Запуск DBSCAN при нажатии кнопки для основного канваса
         document.getElementById('runDBSCAN').addEventListener('click', async () => {
             const epsilon = parseFloat(document.getElementById('epsilon').value);
             const minPts = parseInt(document.getElementById('minPts').value, 10);
@@ -273,45 +273,56 @@
 
         // Сброс канваса
         document.getElementById('resetCanvas').addEventListener('click', () => {
-            points.length = 0;
-            clusterCount = 0;
-            clusterColors = [];
             clearCanvas();
         });
 
-        // Изначально рисуем координатную сетку
-        drawGrid();
+        // Обработчик событий для добавления точек на канвас примера (форма глаза)
+        exampleCanvas.addEventListener('mousedown', (e) => {
+            addExamplePoint(e.offsetX, e.offsetY);
+        });
 
-        // Функция для рисования примера с точками в форме глаза
-        function drawEyeShapePoints() {
-            const eyePoints = [];
-            const eyeWidth = 300;
-            const eyeHeight = 150;
-            const centerX = 400;
-            const centerY = 300;
-
-            // Создание точек в форме глаза
-            for (let i = 0; i < 250; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const radiusX = Math.random() * eyeWidth;
-                const radiusY = Math.sqrt(eyeHeight ** 2 - (radiusX ** 2 * (eyeHeight / eyeWidth)));
-                const x = centerX + radiusX * Math.cos(angle);
-                const y = centerY + radiusY * Math.sin(angle);
-                eyePoints.push({ x, y });
-            }
-
-            // Рисуем точки
-            eyePoints.forEach(point => {
-                exampleCtx.fillStyle = 'black';
-                exampleCtx.beginPath();
-                exampleCtx.arc(point.x, point.y, 3, 0, Math.PI * 2);
-                exampleCtx.fill();
-            });
+        // Функция для добавления точки в пример
+        function addExamplePoint(x, y) {
+            examplePoints.push({ x, y });
+            drawExamplePoint(x, y);
         }
 
-        // Нарисовать пример с точками
-        drawEyeShapePoints();
+        // Функция для рисования точки на канвасе примера
+        function drawExamplePoint(x, y, color = 'black') {
+            exampleCtx.fillStyle = color;
+            exampleCtx.beginPath();
+            exampleCtx.arc(x, y, 5, 0, Math.PI * 2);
+            exampleCtx.fill();
+        }
 
+        // Сброс канваса примера
+        document.getElementById('resetExampleCanvas').addEventListener('click', () => {
+            examplePoints.length = 0;
+            exampleCtx.clearRect(0, 0, exampleCanvas.width, exampleCanvas.height);
+        });
+
+        // Запуск DBSCAN для канваса примера
+        document.getElementById('runDBSCANExample').addEventListener('click', async () => {
+            const epsilon = parseFloat(document.getElementById('epsilon').value);
+            const minPts = parseInt(document.getElementById('minPts').value, 10);
+
+            const results = await dbscanWithSteps(epsilon, minPts, examplePoints);
+            visualizeExampleResults(results);
+        });
+
+        // Визуализация результатов для канваса примера
+        function visualizeExampleResults({ clusters, noise }) {
+            exampleCtx.clearRect(0, 0, exampleCanvas.width, exampleCanvas.height);
+
+            clusters.forEach((cluster, idx) => {
+                cluster.forEach(point => drawExamplePoint(point.x, point.y, clusterColors[idx])); 
+            });
+
+            noise.forEach(point => drawExamplePoint(point.x, point.y, 'gray'));
+        }
+
+        // Изначально рисуем координатную сетку на основном канвасе
+        drawGrid();
     </script>
 </body>
 </html>
