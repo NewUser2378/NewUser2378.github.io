@@ -128,7 +128,7 @@
                 ctx.fillText(y, 2, y + 12);
             }
         }
-
+        
         canvas.addEventListener('mousedown', (e) => {
             isDragging = true;
             startX = e.offsetX;
@@ -140,11 +140,13 @@
             addPoint(e.offsetX, e.offsetY);
         });
 
+
         function addPoint(x, y) {
             points.push({ x, y });
             drawPoint(x, y, 'gray');
         }
 
+        
         function drawPoint(x, y, color = 'black') {
             ctx.fillStyle = color;
             ctx.beginPath();
@@ -157,9 +159,11 @@
             drawGrid();
         }
 
+        
         function distance(p1, p2) {
             return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
         }
+
 
         function regionQuery(point, epsilon) {
             return points.filter(p => distance(p, point) <= epsilon);
@@ -172,28 +176,33 @@
             ctx.stroke();
         }
 
+
         async function dbscanWithSteps(epsilon, minPts) {
             const clusters = [];
             const noise = [];
             const visited = new Set();
 
             async function expandCluster(point, neighbors, cluster) {
-                cluster.push(point);
+ 
                 const clusterColor = clusterColors[clusterCount];
-                drawCircle(point.x, point.y, epsilon, clusterColor); 
+                cluster.push(point);
                 drawPoint(point.x, point.y, clusterColor); 
                 await delay(500);
 
+                
                 for (const neighbor of neighbors) {
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
                         const newNeighbors = regionQuery(neighbor, epsilon);
-                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor);  
+                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor);
                         await delay(500);
+
                         if (newNeighbors.length >= minPts) {
                             neighbors.push(...newNeighbors);
                         }
                     }
+
+                    
                     if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
                         drawPoint(neighbor.x, neighbor.y, clusterColor);  
@@ -212,13 +221,13 @@
 
                 if (neighbors.length < minPts) {
                     noise.push(point);
-                    drawPoint(point.x, point.y, 'gray');
+                    drawPoint(point.x, point.y, 'gray'); 
                 } else {
                     clusterCount++;
                     const clusterColor = `hsl(${(clusterCount * 100) % 360}, 100%, 50%)`;
-                    clusterColors.push(clusterColor);
+                    clusterColors.push(clusterColor); 
                     const cluster = [];
-                    await expandCluster(point, neighbors, cluster);
+                    await expandCluster(point, neighbors, cluster); 
                     clusters.push(cluster);
                 }
             }
@@ -226,6 +235,7 @@
             return { clusters, noise };
         }
 
+        // Визуализация результатов
         function visualizeResults({ clusters, noise }) {
             clearCanvas();
 
@@ -236,10 +246,12 @@
             noise.forEach(point => drawPoint(point.x, point.y, 'gray'));
         }
 
+        
         function delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
+       
         document.getElementById('runDBSCAN').addEventListener('click', async () => {
             const epsilon = parseFloat(document.getElementById('epsilon').value);
             const minPts = parseInt(document.getElementById('minPts').value, 10);
@@ -248,6 +260,7 @@
             visualizeResults(results);
         });
 
+       
         document.getElementById('resetCanvas').addEventListener('click', () => {
             points.length = 0;
             clusterCount = 0;
@@ -255,6 +268,7 @@
             clearCanvas();
         });
 
+        
         document.getElementById('resetColors').addEventListener('click', () => {
             clearCanvas();
             drawGrid();
