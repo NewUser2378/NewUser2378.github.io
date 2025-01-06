@@ -88,6 +88,7 @@
         <button id="runDBSCAN">Run DBSCAN</button>
         <button id="resetCanvas">Reset</button>
         <button id="resetColors">Reset Colors</button>
+        <button id="undoLastPoint">Undo Last Point</button>
     </div>
 
     <script>
@@ -97,9 +98,8 @@
         let clusterCount = 0;
         let clusterColors = [];
         let isDragging = false;
-        let startX, startY;
+        let dragPointIndex = -1;
 
-        
         function drawGrid() {
             const step = 50;
             ctx.strokeStyle = "#e0e0e0";
@@ -130,25 +130,6 @@
             }
         }
 
-        
-        canvas.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            startX = e.offsetX;
-            startY = e.offsetY;
-        });
-
-        canvas.addEventListener('mouseup', (e) => {
-            isDragging = false;
-            addPoint(e.offsetX, e.offsetY);
-        });
-
-        
-        function addPoint(x, y) {
-            points.push({ x, y });
-            drawPoint(x, y, 'gray');
-        }
-
-        
         function drawPoint(x, y, color = 'black') {
             ctx.fillStyle = color;
             ctx.beginPath();
@@ -156,24 +137,56 @@
             ctx.fill();
         }
 
-        
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawGrid();
         }
 
-       
-        
+        function redrawPoints() {
+            clearCanvas();
+            points.forEach(point => drawPoint(point.x, point.y, point.color || 'gray'));
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const x = e.offsetX;
+            const y = e.offsetY;
+            dragPointIndex = points.findIndex(point => Math.hypot(point.x - x, point.y - y) < 5);
+
+            if (dragPointIndex >= 0) {
+                isDragging = true;
+            } else {
+                addPoint(x, y);
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging && dragPointIndex >= 0) {
+                const x = e.offsetX;
+                const y = e.offsetY;
+                points[dragPointIndex].x = x;
+                points[dragPointIndex].y = y;
+                redrawPoints();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+            dragPointIndex = -1;
+        });
+
+        function addPoint(x, y) {
+            points.push({ x, y });
+            drawPoint(x, y, 'gray');
+        }
+
         function distance(p1, p2) {
             return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
         }
 
-        
         function regionQuery(point, epsilon) {
             return points.filter(p => distance(p, point) <= epsilon);
         }
 
-       
         function drawCircle(x, y, radius, color = 'rgba(0, 0, 255, 0.2)') {
             ctx.strokeStyle = color;
             ctx.beginPath();
@@ -181,25 +194,22 @@
             ctx.stroke();
         }
 
-        
         async function dbscanWithSteps(epsilon, minPts) {
             const clusters = [];
             const noise = [];
             const visited = new Set();
 
             async function expandCluster(point, neighbors, cluster) {
-                
                 const clusterColor = clusterColors[clusterCount];
                 cluster.push(point);
-                drawPoint(point.x, point.y, clusterColor); 
+                drawPoint(point.x, point.y, clusterColor);
                 await delay(500);
 
-                
                 for (const neighbor of neighbors) {
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
                         const newNeighbors = regionQuery(neighbor, epsilon);
-                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor); 
+                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor);
                         await delay(500);
 
                         if (newNeighbors.length >= minPts) {
@@ -207,10 +217,9 @@
                         }
                     }
 
-                    
                     if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
-                        drawPoint(neighbor.x, neighbor.y, clusterColor); 
+                        drawPoint(neighbor.x, neighbor.y, clusterColor);
                     }
                 }
             }
@@ -221,18 +230,18 @@
                 const neighbors = regionQuery(point, epsilon);
 
                 drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)');
-                drawPoint(point.x, point.y, 'black'); 
+                drawPoint(point.x, point.y, 'black');
                 await delay(500);
 
                 if (neighbors.length < minPts) {
                     noise.push(point);
-                    drawPoint(point.x, point.y, 'gray'); 
+                    drawPoint(point.x, point.y, 'gray');
                 } else {
                     clusterCount++;
                     const clusterColor = `hsl(${(clusterCount * 100) % 360}, 100%, 50%)`;
-                    clusterColors.push(clusterColor); 
+                    clusterColors.push(clusterColor);
                     const cluster = [];
-                    await expandCluster(point, neighbors, cluster); 
+                    await expandCluster(point, neighbors, cluster);
                     clusters.push(cluster);
                 }
             }
@@ -240,7 +249,6 @@
             return { clusters, noise };
         }
 
-        
         function visualizeResults({ clusters, noise }) {
             clearCanvas();
 
@@ -251,12 +259,10 @@
             noise.forEach(point => drawPoint(point.x, point.y, 'gray'));
         }
 
-        
         function delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-       
         document.getElementById('runDBSCAN').addEventListener('click', async () => {
             const epsilon = parseFloat(document.getElementById('epsilon').value);
             const minPts = parseInt(document.getElementById('minPts').value, 10);
@@ -265,7 +271,6 @@
             visualizeResults(results);
         });
 
-       
         document.getElementById('resetCanvas').addEventListener('click', () => {
             points.length = 0;
             clusterCount = 0;
@@ -273,11 +278,13 @@
             clearCanvas();
         });
 
-        
         document.getElementById('resetColors').addEventListener('click', () => {
-            clearCanvas();
-            drawGrid();
-            points.forEach(point => drawPoint(point.x, point.y, 'gray'));
+            redrawPoints();
+        });
+
+        document.getElementById('undoLastPoint').addEventListener('click', () => {
+            points.pop();
+            redrawPoints();
         });
 
         drawGrid();
