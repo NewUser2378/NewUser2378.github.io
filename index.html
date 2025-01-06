@@ -67,6 +67,14 @@
             left: 0;
             transform: translateY(50%);
         }
+
+        .slider-container {
+            margin: 0 20px;
+        }
+
+        .slider {
+            width: 200px;
+        }
     </style>
 </head>
 <body>
@@ -90,6 +98,11 @@
         <button id="resetColors">Reset Colors</button>
         <button id="undoLastPoint">Undo Last Point</button>
         <button id="generateEye">Generate Eye</button>
+        <div class="slider-container">
+            <label for="speedControl">Animation Speed:</label>
+            <input type="range" id="speedControl" class="slider" min="50" max="1000" value="500">
+            <span id="speedValue">500 ms</span>
+        </div>
     </div>
 
     <script>
@@ -100,6 +113,7 @@
         let clusterColors = [];
         let isDragging = false;
         let dragPointIndex = -1;
+        let delayTime = 500; // начальная задержка в 500 мс
 
         function drawGrid() {
             const step = 50;
@@ -204,14 +218,14 @@
                 const clusterColor = clusterColors[clusterCount];
                 cluster.push(point);
                 drawPoint(point.x, point.y, clusterColor);
-                await delay(500);
+                await delay(delayTime);
 
                 for (const neighbor of neighbors) {
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
                         const newNeighbors = regionQuery(neighbor, epsilon);
                         drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor);
-                        await delay(500);
+                        await delay(delayTime);
 
                         if (newNeighbors.length >= minPts) {
                             neighbors.push(...newNeighbors);
@@ -232,7 +246,7 @@
 
                 drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)');
                 drawPoint(point.x, point.y, 'black');
-                await delay(500);
+                await delay(delayTime);
 
                 if (neighbors.length < minPts) {
                     noise.push(point);
@@ -264,6 +278,7 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
+        
         function generateEye() {
             const eyeCenterX = 400;
             const eyeCenterY = 300;
@@ -271,6 +286,7 @@
             const eyeRadiusY = 80;
             const pointsCount = 250;
 
+            
             for (let i = 0; i < pointsCount; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 const radiusX = Math.random() * eyeRadiusX;
@@ -281,6 +297,12 @@
                 drawPoint(x, y, 'gray');
             }
         }
+
+        
+        document.getElementById('speedControl').addEventListener('input', (e) => {
+            delayTime = parseInt(e.target.value, 10);
+            document.getElementById('speedValue').textContent = `${delayTime} ms`;
+        });
 
         document.getElementById('runDBSCAN').addEventListener('click', async () => {
             const epsilon = parseFloat(document.getElementById('epsilon').value);
