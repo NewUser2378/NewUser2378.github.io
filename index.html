@@ -89,19 +89,6 @@
         <button id="resetCanvas">Reset</button>
     </div>
 
-    <h2>Second Window for Adding Points</h2>
-    <div id="controls-second">
-        <label>
-            X-coordinate:
-            <input type="number" id="xCoord" value="100" step="1">
-        </label>
-        <label>
-            Y-coordinate:
-            <input type="number" id="yCoord" value="100" step="1">
-        </label>
-        <button id="addPointToSecondWindow">Add Point</button>
-    </div>
-
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -210,15 +197,14 @@
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
                         const newNeighbors = regionQuery(neighbor, epsilon);
-                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor); // Окружность в цвет кластера
-                        await delay(500);
                         if (newNeighbors.length >= minPts) {
                             neighbors.push(...newNeighbors);
                         }
                     }
+
                     if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
-                        drawPoint(neighbor.x, neighbor.y, clusterColor); // Точка в цвет кластера
+                        drawPoint(neighbor.x, neighbor.y, clusterColors[clusterCount]); // Точка в цвет кластера
                     }
                 }
             }
@@ -279,14 +265,6 @@
             clusterCount = 0;
             clusterColors = [];
             clearCanvas();
-        });
-
-        // Добавление точки через второй блок формы
-        document.getElementById('addPointToSecondWindow').addEventListener('click', () => {
-            const xCoord = parseFloat(document.getElementById('xCoord').value);
-            const yCoord = parseFloat(document.getElementById('yCoord').value);
-
-            addPoint(xCoord, yCoord); // Добавляем точку
         });
 
         // Изначально рисуем координатную сетку
