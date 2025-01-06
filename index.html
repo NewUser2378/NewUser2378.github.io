@@ -190,6 +190,7 @@
             async function expandCluster(point, neighbors, cluster) {
                 cluster.push(point);
                 const clusterColor = clusterColors[clusterCount];
+                drawCircle(point.x, point.y, epsilon, clusterColor); // Окружность в цвет кластера
                 drawPoint(point.x, point.y, clusterColor); // Точка в цвет кластера
                 await delay(500);
 
@@ -197,14 +198,15 @@
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
                         const newNeighbors = regionQuery(neighbor, epsilon);
+                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor); // Окружность в цвет кластера
+                        await delay(500);
                         if (newNeighbors.length >= minPts) {
                             neighbors.push(...newNeighbors);
                         }
                     }
-
                     if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
-                        drawPoint(neighbor.x, neighbor.y, clusterColors[clusterCount]); // Точка в цвет кластера
+                        drawPoint(neighbor.x, neighbor.y, clusterColor); // Точка в цвет кластера
                     }
                 }
             }
@@ -215,19 +217,9 @@
                 const neighbors = regionQuery(point, epsilon);
 
                 drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)'); // Окружность вокруг точки
-                await delay(500);
+                drawPoint(point.x, point.y, 'blue'); // Временный цвет для выделения
 
-                // Мигание точек в радиусе
-                for (let i = 0; i < 3; i++) {
-                    for (const neighbor of neighbors) {
-                        drawPoint(neighbor.x, neighbor.y, 'yellow'); // Мигающие точки в желтом
-                    }
-                    await delay(300);
-                    for (const neighbor of neighbors) {
-                        drawPoint(neighbor.x, neighbor.y, 'black'); // Сбрасываем цвет обратно
-                    }
-                    await delay(300);
-                }
+                await delay(500);
 
                 if (neighbors.length < minPts) {
                     noise.push(point);
