@@ -7,201 +7,160 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        #canvas {
-            border: 1px solid #ccc;
+        #canvas-container {
+            position: relative;
             margin-top: 20px;
         }
 
-        .instructions {
-            margin-bottom: 10px;
+        canvas {
+            border: 1px solid black;
+            cursor: crosshair;
         }
 
-        .point {
-            fill: steelblue;
+        #controls {
+            margin-top: 20px;
         }
 
-        .cluster {
-            stroke: black;
-            stroke-width: 1;
-        }
-
-        .noise {
-            fill: red;
+        button {
+            margin: 0 5px;
+            padding: 10px;
         }
     </style>
 </head>
 <body>
     <h1>DBSCAN Visualization</h1>
-    <p class="instructions">Click to add points on the canvas. Adjust parameters below and press "Run DBSCAN" to visualize clustering.</p>
-    <label for="eps">Epsilon (eps):</label>
-    <input type="number" id="eps" step="0.1" value="50">
 
-    <label for="minPts">Min Points:</label>
-    <input type="number" id="minPts" value="3">
+    <div id="canvas-container">
+        <canvas id="canvas" width="800" height="600"></canvas>
+    </div>
 
-    <button id="run">Run DBSCAN</button>
-
-    <svg id="canvas" width="600" height="400"></svg>
+    <div id="controls">
+        <label>
+            Epsilon:
+            <input type="number" id="epsilon" value="50" step="1" min="1">
+        </label>
+        <label>
+            Min Points:
+            <input type="number" id="minPts" value="3" step="1" min="1">
+        </label>
+        <button id="runDBSCAN">Run DBSCAN</button>
+        <button id="resetCanvas">Reset</button>
+    </div>
 
     <script>
-        // DBSCAN Implementation
-        class DBSCAN {
-            constructor(data, eps, minPts) {
-                this.data = data;
-                this.eps = eps;
-                this.minPts = minPts;
-                this.visited = new Set();
-                this.clusters = [];
-                this.noise = [];
-            }
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
 
-            run() {
-                for (let i = 0; i < this.data.length; i++) {
-                    if (this.visited.has(i)) continue;
+        const points = [];
+        const EPSILON = 50;
+        const MIN_PTS = 3;
 
-                    this.visited.add(i);
-                    const neighbors = this.regionQuery(i);
+        let isDragging = false;
+        let startX, startY;
 
-                    if (neighbors.length < this.minPts) {
-                        this.noise.push(i);
-                    } else {
-                        const cluster = [];
-                        this.expandCluster(i, neighbors, cluster);
-                        this.clusters.push(cluster);
-                    }
-                }
-            }
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.offsetX;
+            startY = e.offsetY;
+        });
 
-            expandCluster(pointIndex, neighbors, cluster) {
-                cluster.push(pointIndex);
+        canvas.addEventListener('mouseup', (e) => {
+            isDragging = false;
+            addPoint(e.offsetX, e.offsetY);
+        });
 
-                for (let i = 0; i < neighbors.length; i++) {
-                    const neighbor = neighbors[i];
+        function addPoint(x, y) {
+            points.push({ x, y });
+            drawPoint(x, y);
+        }
 
-                    if (!this.visited.has(neighbor)) {
-                        this.visited.add(neighbor);
-                        const neighborNeighbors = this.regionQuery(neighbor);
-                        if (neighborNeighbors.length >= this.minPts) {
-                            neighbors = neighbors.concat(neighborNeighbors);
+        function drawPoint(x, y, color = 'black') {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function distance(p1, p2) {
+            return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+        }
+
+        function regionQuery(point, epsilon) {
+            return points.filter(p => distance(p, point) <= epsilon);
+        }
+
+        function dbscan(epsilon, minPts) {
+            const clusters = [];
+            const noise = [];
+            const visited = new Set();
+
+            function expandCluster(point, neighbors, cluster) {
+                cluster.push(point);
+                neighbors.forEach(neighbor => {
+                    if (!visited.has(neighbor)) {
+                        visited.add(neighbor);
+                        const newNeighbors = regionQuery(neighbor, epsilon);
+                        if (newNeighbors.length >= minPts) {
+                            neighbors.push(...newNeighbors);
                         }
                     }
-
-                    if (!cluster.includes(neighbor)) {
+                    if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
                     }
-                }
-            }
-
-            regionQuery(pointIndex) {
-                const neighbors = [];
-                const [x1, y1] = this.data[pointIndex];
-
-                for (let i = 0; i < this.data.length; i++) {
-                    const [x2, y2] = this.data[i];
-                    const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-                    if (distance <= this.eps) {
-                        neighbors.push(i);
-                    }
-                }
-
-                return neighbors;
-            }
-        }
-
-        // Visualization
-        const canvas = document.getElementById('canvas');
-        const runButton = document.getElementById('run');
-        const epsInput = document.getElementById('eps');
-        const minPtsInput = document.getElementById('minPts');
-
-        let points = [];
-
-        canvas.addEventListener('click', (event) => {
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            points.push([x, y]);
-            drawPoints();
-        });
-
-        function drawPoints() {
-            const svg = d3.select('#canvas');
-            svg.selectAll('circle').remove();
-
-            points.forEach(([x, y]) => {
-                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                circle.setAttribute('cx', x);
-                circle.setAttribute('cy', y);
-                circle.setAttribute('r', 5);
-                circle.setAttribute('class', 'point');
-                circle.setAttribute('fill', 'steelblue');
-                svg.appendChild(circle);
-            });
-        }
-
-        runButton.addEventListener('click', () => {
-            const eps = parseFloat(epsInput.value);
-            const minPts = parseInt(minPtsInput.value, 10);
-
-            const dbscan = new DBSCAN(points, eps, minPts);
-            dbscan.run();
-
-            visualizeClusters(dbscan.clusters, dbscan.noise);
-        });
-
-        function visualizeClusters(clusters, noise) {
-            const svg = d3.select('#canvas');
-            svg.selectAll('circle').remove();
-
-            const colors = d3.schemeCategory10;
-
-            clusters.forEach((cluster, index) => {
-                cluster.forEach((pointIndex) => {
-                    const [x, y] = points[pointIndex];
-                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    circle.setAttribute('cx', x);
-                    circle.setAttribute('cy', y);
-                    circle.setAttribute('r', 5);
-                    circle.setAttribute('fill', colors[index % colors.length]);
-                    circle.setAttribute('class', `cluster cluster-${index}`);
-                    svg.appendChild(circle);
                 });
+            }
+
+            points.forEach(point => {
+                if (visited.has(point)) return;
+                visited.add(point);
+                const neighbors = regionQuery(point, epsilon);
+                if (neighbors.length < minPts) {
+                    noise.push(point);
+                } else {
+                    const cluster = [];
+                    expandCluster(point, neighbors, cluster);
+                    clusters.push(cluster);
+                }
             });
 
-            noise.forEach((pointIndex) => {
-                const [x, y] = points[pointIndex];
-                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                circle.setAttribute('cx', x);
-                circle.setAttribute('cy', y);
-                circle.setAttribute('r', 5);
-                circle.setAttribute('fill', 'red');
-                circle.setAttribute('class', 'noise');
-                svg.appendChild(circle);
-            });
+            return { clusters, noise };
         }
-    </script>
 
-    <!-- Include D3.js locally -->
-    <script>
-        // Minimal D3.js for use locally
-        const d3 = {
-            select: (selector) => {
-                const element = document.querySelector(selector);
-                element.selectAll = function (tagName) {
-                    return Array.from(this.querySelectorAll(tagName));
-                };
-                element.appendChild = function (child) {
-                    this.appendChild(child);
-                };
-                return element;
-            },
-            schemeCategory10: [
-                '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
-            ]
-        };
+        function visualizeResults({ clusters, noise }) {
+            clearCanvas();
+
+            // Draw clusters
+            clusters.forEach((cluster, idx) => {
+                const color = `hsl(${(idx * 100) % 360}, 100%, 50%)`;
+                cluster.forEach(point => drawPoint(point.x, point.y, color));
+            });
+
+            // Draw noise
+            noise.forEach(point => drawPoint(point.x, point.y, 'gray'));
+        }
+
+        document.getElementById('runDBSCAN').addEventListener('click', () => {
+            const epsilon = parseFloat(document.getElementById('epsilon').value);
+            const minPts = parseInt(document.getElementById('minPts').value, 10);
+
+            const results = dbscan(epsilon, minPts);
+            visualizeResults(results);
+        });
+
+        document.getElementById('resetCanvas').addEventListener('click', () => {
+            points.length = 0;
+            clearCanvas();
+        });
     </script>
 </body>
 </html>
