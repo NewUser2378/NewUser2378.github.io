@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBSCAN Visualization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #canvas {
+            border: 1px solid #ccc;
+            margin-top: 20px;
+        }
+
+        .instructions {
+            margin-bottom: 10px;
+        }
+
+        .point {
+            fill: steelblue;
+        }
+
+        .cluster {
+            stroke: black;
+            stroke-width: 1;
+        }
+
+        .noise {
+            fill: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>DBSCAN Visualization</h1>
+    <p class="instructions">Click to add points on the canvas. Adjust parameters below and press "Run DBSCAN" to visualize clustering.</p>
+    <label for="eps">Epsilon (eps):</label>
+    <input type="number" id="eps" step="0.1" value="50">
+
+    <label for="minPts">Min Points:</label>
+    <input type="number" id="minPts" value="3">
+
+    <button id="run">Run DBSCAN</button>
+
+    <svg id="canvas" width="600" height="400"></svg>
+
+    <script>
+        // DBSCAN Implementation
+        class DBSCAN {
+            constructor(data, eps, minPts) {
+                this.data = data;
+                this.eps = eps;
+                this.minPts = minPts;
+                this.visited = new Set();
+                this.clusters = [];
+                this.noise = [];
+            }
+
+            run() {
+                for (let i = 0; i < this.data.length; i++) {
+                    if (this.visited.has(i)) continue;
+
+                    this.visited.add(i);
+                    const neighbors = this.regionQuery(i);
+
+                    if (neighbors.length < this.minPts) {
+                        this.noise.push(i);
+                    } else {
+                        const cluster = [];
+                        this.expandCluster(i, neighbors, cluster);
+                        this.clusters.push(cluster);
+                    }
+                }
+            }
+
+            expandCluster(pointIndex, neighbors, cluster) {
+                cluster.push(pointIndex);
+
+                for (let i = 0; i < neighbors.length; i++) {
+                    const neighbor = neighbors[i];
+
+                    if (!this.visited.has(neighbor)) {
+                        this.visited.add(neighbor);
+                        const neighborNeighbors = this.regionQuery(neighbor);
+                        if (neighborNeighbors.length >= this.minPts) {
+                            neighbors = neighbors.concat(neighborNeighbors);
+                        }
+                    }
+
+                    if (!cluster.includes(neighbor)) {
+                        cluster.push(neighbor);
+                    }
+                }
+            }
+
+            regionQuery(pointIndex) {
+                const neighbors = [];
+                const [x1, y1] = this.data[pointIndex];
+
+                for (let i = 0; i < this.data.length; i++) {
+                    const [x2, y2] = this.data[i];
+                    const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                    if (distance <= this.eps) {
+                        neighbors.push(i);
+                    }
+                }
+
+                return neighbors;
+            }
+        }
+
+        // Visualization
+        const canvas = document.getElementById('canvas');
+        const runButton = document.getElementById('run');
+        const epsInput = document.getElementById('eps');
+        const minPtsInput = document.getElementById('minPts');
+
+        let points = [];
+
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            points.push([x, y]);
+            drawPoints();
+        });
+
+        function drawPoints() {
+            const svg = d3.select('#canvas');
+            svg.selectAll('*').remove();
+
+            svg.selectAll('.point')
+                .data(points)
+                .enter()
+                .append('circle')
+                .attr('cx', d => d[0])
+                .attr('cy', d => d[1])
+                .attr('r', 5)
+                .attr('class', 'point');
+        }
+
+        runButton.addEventListener('click', () => {
+            const eps = parseFloat(epsInput.value);
+            const minPts = parseInt(minPtsInput.value, 10);
+
+            const dbscan = new DBSCAN(points, eps, minPts);
+            dbscan.run();
+
+            visualizeClusters(dbscan.clusters, dbscan.noise);
+        });
+
+        function visualizeClusters(clusters, noise) {
+            const svg = d3.select('#canvas');
+            svg.selectAll('*').remove();
+
+            const colors = d3.schemeCategory10;
+
+            clusters.forEach((cluster, index) => {
+                svg.selectAll(`.cluster-${index}`)
+                    .data(cluster.map(i => points[i]))
+                    .enter()
+                    .append('circle')
+                    .attr('cx', d => d[0])
+                    .attr('cy', d => d[1])
+                    .attr('r', 5)
+                    .attr('fill', colors[index % colors.length])
+                    .attr('class', `cluster cluster-${index}`);
+            });
+
+            svg.selectAll('.noise')
+                .data(noise.map(i => points[i]))
+                .enter()
+                .append('circle')
+                .attr('cx', d => d[0])
+                .attr('cy', d => d[1])
+                .attr('r', 5)
+                .attr('fill', 'red')
+                .attr('class', 'noise');
+        }
+    </script>
+
+    <!-- Include D3.js locally -->
+    <script>
+        const d3 = {
+            select: (selector) => document.querySelector(selector),
+            schemeCategory10: [
+                '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+            ]
+        };
+    </script>
+</body>
+</html>
