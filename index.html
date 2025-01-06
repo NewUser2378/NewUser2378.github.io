@@ -31,6 +31,22 @@
             margin: 0 5px;
             padding: 10px;
         }
+
+        .axis-label {
+            position: absolute;
+            font-size: 12px;
+            color: #000;
+        }
+
+        .x-axis-label {
+            bottom: 0;
+            transform: translateX(-50%);
+        }
+
+        .y-axis-label {
+            left: 0;
+            transform: translateY(50%);
+        }
     </style>
 </head>
 <body>
@@ -58,15 +74,19 @@
         const ctx = canvas.getContext('2d');
 
         const points = [];
+        let clusterCount = 0;
+        let clusterColors = [];
 
         let isDragging = false;
         let startX, startY;
 
-        // Функция для рисования координатной сетки
+        // Функция для рисования координатной сетки и меток
         function drawGrid() {
             const step = 50;
             ctx.strokeStyle = "#e0e0e0";
             ctx.lineWidth = 0.5;
+
+            // Рисуем вертикальные и горизонтальные линии
             for (let x = step; x < canvas.width; x += step) {
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
@@ -78,6 +98,16 @@
                 ctx.moveTo(0, y);
                 ctx.lineTo(canvas.width, y);
                 ctx.stroke();
+            }
+
+            // Добавляем метки для осей X и Y
+            for (let x = 0; x < canvas.width; x += step) {
+                ctx.fillStyle = "#000";
+                ctx.fillText(x, x + 2, canvas.height - 2);
+            }
+            for (let y = 0; y < canvas.height; y += step) {
+                ctx.fillStyle = "#000";
+                ctx.fillText(y, 2, y + 12);
             }
         }
 
@@ -139,14 +169,15 @@
 
             async function expandCluster(point, neighbors, cluster) {
                 cluster.push(point);
-                drawCircle(point.x, point.y, epsilon, 'rgba(0, 255, 0, 0.3)');
+                drawCircle(point.x, point.y, epsilon, clusterColors[clusterCount]); // Цвет окружности = цвет кластера
+                drawPoint(point.x, point.y, clusterColors[clusterCount]); // Точка окрашена в цвет кластера
                 await delay(500);
 
                 for (const neighbor of neighbors) {
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
                         const newNeighbors = regionQuery(neighbor, epsilon);
-                        drawCircle(neighbor.x, neighbor.y, epsilon, 'rgba(0, 255, 0, 0.3)');
+                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColors[clusterCount]); // Цвет окружности
                         await delay(500);
                         if (newNeighbors.length >= minPts) {
                             neighbors.push(...newNeighbors);
@@ -154,7 +185,7 @@
                     }
                     if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
-                        drawPoint(neighbor.x, neighbor.y, 'green'); // Покрасить в зеленый, если в кластере
+                        drawPoint(neighbor.x, neighbor.y, clusterColors[clusterCount]); // Покрасить точку
                     }
                 }
             }
@@ -164,13 +195,15 @@
                 visited.add(point);
                 const neighbors = regionQuery(point, epsilon);
 
-                drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)');
+                drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)'); // Окружность вокруг точки
                 await delay(500);
 
                 if (neighbors.length < minPts) {
                     noise.push(point);
-                    drawPoint(point.x, point.y, 'gray'); // Покрасить шум в серый
+                    drawPoint(point.x, point.y, 'gray'); // Шум окрашен в серый
                 } else {
+                    clusterCount++;
+                    clusterColors.push(`hsl(${(clusterCount * 100) % 360}, 100%, 50%)`); // Создаем уникальный цвет для нового кластера
                     const cluster = [];
                     await expandCluster(point, neighbors, cluster);
                     clusters.push(cluster);
@@ -186,8 +219,7 @@
 
             // Нарисовать кластеры
             clusters.forEach((cluster, idx) => {
-                const color = `hsl(${(idx * 100) % 360}, 100%, 50%)`;
-                cluster.forEach(point => drawPoint(point.x, point.y, color));
+                cluster.forEach(point => drawPoint(point.x, point.y, clusterColors[idx])); // Покрасить точки в цвет кластера
             });
 
             // Нарисовать шум
@@ -211,6 +243,8 @@
         // Сброс канваса
         document.getElementById('resetCanvas').addEventListener('click', () => {
             points.length = 0;
+            clusterCount = 0;
+            clusterColors = [];
             clearCanvas();
         });
 
