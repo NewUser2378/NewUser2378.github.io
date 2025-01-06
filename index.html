@@ -12,7 +12,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #001f3d; /* Темно-синий фон */
+            background-color: #001f3d;
             color: white;
         }
 
@@ -24,7 +24,7 @@
         canvas {
             border: 1px solid black;
             cursor: crosshair;
-            background-color: #f0f0f0; /* Светлый фон для канваса */
+            background-color: #f0f0f0;
         }
 
         #controls {
@@ -93,27 +93,24 @@
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-
         const points = [];
         let clusterCount = 0;
         let clusterColors = [];
-
         let isDragging = false;
         let startX, startY;
 
-        // Функция для рисования координатной сетки и меток
         function drawGrid() {
             const step = 50;
             ctx.strokeStyle = "#e0e0e0";
             ctx.lineWidth = 0.5;
 
-            // Рисуем вертикальные и горизонтальные линии
             for (let x = step; x < canvas.width; x += step) {
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, canvas.height);
                 ctx.stroke();
             }
+
             for (let y = step; y < canvas.height; y += step) {
                 ctx.beginPath();
                 ctx.moveTo(0, y);
@@ -121,18 +118,17 @@
                 ctx.stroke();
             }
 
-            // Добавляем метки для осей X и Y
             for (let x = 0; x < canvas.width; x += step) {
                 ctx.fillStyle = "#000";
                 ctx.fillText(x, x + 2, canvas.height - 2);
             }
+
             for (let y = 0; y < canvas.height; y += step) {
                 ctx.fillStyle = "#000";
                 ctx.fillText(y, 2, y + 12);
             }
         }
 
-        // Обработчик событий для добавления точек
         canvas.addEventListener('mousedown', (e) => {
             isDragging = true;
             startX = e.offsetX;
@@ -144,13 +140,11 @@
             addPoint(e.offsetX, e.offsetY);
         });
 
-        // Функция для добавления точки
         function addPoint(x, y) {
             points.push({ x, y });
-            drawPoint(x, y, 'gray'); // Все точки изначально серые
+            drawPoint(x, y, 'gray');
         }
 
-        // Функция для рисования точки
         function drawPoint(x, y, color = 'black') {
             ctx.fillStyle = color;
             ctx.beginPath();
@@ -158,23 +152,19 @@
             ctx.fill();
         }
 
-        // Очистить канвас
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawGrid(); // Рисуем сетку заново
+            drawGrid();
         }
 
-        // Вычисление расстояния между двумя точками
         function distance(p1, p2) {
             return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
         }
 
-        // Получение соседей точки
         function regionQuery(point, epsilon) {
             return points.filter(p => distance(p, point) <= epsilon);
         }
 
-        // Функция для рисования окружности с радиусом epsilon
         function drawCircle(x, y, radius, color = 'rgba(0, 0, 255, 0.2)') {
             ctx.strokeStyle = color;
             ctx.beginPath();
@@ -182,7 +172,6 @@
             ctx.stroke();
         }
 
-        // Функция для выполнения алгоритма DBSCAN с шагами
         async function dbscanWithSteps(epsilon, minPts) {
             const clusters = [];
             const noise = [];
@@ -191,15 +180,15 @@
             async function expandCluster(point, neighbors, cluster) {
                 cluster.push(point);
                 const clusterColor = clusterColors[clusterCount];
-                drawCircle(point.x, point.y, epsilon, clusterColor); // Окружность в цвет кластера
-                drawPoint(point.x, point.y, clusterColor); // Точка в цвет кластера
+                drawCircle(point.x, point.y, epsilon, clusterColor);
+                drawPoint(point.x, point.y, clusterColor);
                 await delay(500);
 
                 for (const neighbor of neighbors) {
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
                         const newNeighbors = regionQuery(neighbor, epsilon);
-                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor); // Окружность в цвет кластера
+                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor);
                         await delay(500);
                         if (newNeighbors.length >= minPts) {
                             neighbors.push(...newNeighbors);
@@ -207,7 +196,7 @@
                     }
                     if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
-                        drawPoint(neighbor.x, neighbor.y, clusterColor); // Точка в цвет кластера
+                        drawPoint(neighbor.x, neighbor.y, clusterColor);
                     }
                 }
             }
@@ -217,18 +206,17 @@
                 visited.add(point);
                 const neighbors = regionQuery(point, epsilon);
 
-                drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)'); // Окружность вокруг точки
-                drawPoint(point.x, point.y, 'blue'); // Временный цвет для выделения
-
+                drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)');
+                drawPoint(point.x, point.y, 'blue');
                 await delay(500);
 
                 if (neighbors.length < minPts) {
                     noise.push(point);
-                    drawPoint(point.x, point.y, 'gray'); // Шум окрашен в серый
+                    drawPoint(point.x, point.y, 'gray');
                 } else {
                     clusterCount++;
                     const clusterColor = `hsl(${(clusterCount * 100) % 360}, 100%, 50%)`;
-                    clusterColors.push(clusterColor); // Создаем уникальный цвет для нового кластера
+                    clusterColors.push(clusterColor);
                     const cluster = [];
                     await expandCluster(point, neighbors, cluster);
                     clusters.push(cluster);
@@ -238,25 +226,20 @@
             return { clusters, noise };
         }
 
-        // Визуализация результатов (кластеров и шума)
         function visualizeResults({ clusters, noise }) {
             clearCanvas();
 
-            // Нарисовать кластеры
             clusters.forEach((cluster, idx) => {
-                cluster.forEach(point => drawPoint(point.x, point.y, clusterColors[idx])); // Покрасить точки в цвет кластера
+                cluster.forEach(point => drawPoint(point.x, point.y, clusterColors[idx]));
             });
 
-            // Нарисовать шум
             noise.forEach(point => drawPoint(point.x, point.y, 'gray'));
         }
 
-        // Задержка для анимации
         function delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // Запуск DBSCAN при нажатии кнопки
         document.getElementById('runDBSCAN').addEventListener('click', async () => {
             const epsilon = parseFloat(document.getElementById('epsilon').value);
             const minPts = parseInt(document.getElementById('minPts').value, 10);
@@ -265,7 +248,6 @@
             visualizeResults(results);
         });
 
-        // Сброс канваса
         document.getElementById('resetCanvas').addEventListener('click', () => {
             points.length = 0;
             clusterCount = 0;
@@ -273,14 +255,12 @@
             clearCanvas();
         });
 
-        // Сброс цветов точек
         document.getElementById('resetColors').addEventListener('click', () => {
             clearCanvas();
             drawGrid();
-            points.forEach(point => drawPoint(point.x, point.y, 'gray')); // Все точки серые
+            points.forEach(point => drawPoint(point.x, point.y, 'gray'));
         });
 
-        // Изначально рисуем координатную сетку
         drawGrid();
     </script>
 </body>
