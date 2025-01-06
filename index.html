@@ -99,7 +99,7 @@
         let isDragging = false;
         let startX, startY;
 
-      
+        
         function drawGrid() {
             const step = 50;
             ctx.strokeStyle = "#e0e0e0";
@@ -130,7 +130,7 @@
             }
         }
 
-       
+        
         canvas.addEventListener('mousedown', (e) => {
             isDragging = true;
             startX = e.offsetX;
@@ -156,12 +156,13 @@
             ctx.fill();
         }
 
-       
+        
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawGrid();
         }
 
+       
         
         function distance(p1, p2) {
             return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
@@ -173,14 +174,13 @@
         }
 
        
-        function drawRadius(x, y, radius, color = 'rgba(0, 0, 255, 0.2)') {
+        function drawCircle(x, y, radius, color = 'rgba(0, 0, 255, 0.2)') {
             ctx.strokeStyle = color;
             ctx.beginPath();
             ctx.arc(x, y, radius, 0, Math.PI * 2);
             ctx.stroke();
         }
 
-        
         
         async function dbscanWithSteps(epsilon, minPts) {
             const clusters = [];
@@ -191,16 +191,15 @@
                 
                 const clusterColor = clusterColors[clusterCount];
                 cluster.push(point);
-
-                
-                drawPoint(point.x, point.y, clusterColor);
+                drawPoint(point.x, point.y, clusterColor); 
                 await delay(500);
 
+                
                 for (const neighbor of neighbors) {
                     if (!visited.has(neighbor)) {
                         visited.add(neighbor);
                         const newNeighbors = regionQuery(neighbor, epsilon);
-                        drawRadius(neighbor.x, neighbor.y, epsilon, clusterColor);
+                        drawCircle(neighbor.x, neighbor.y, epsilon, clusterColor); 
                         await delay(500);
 
                         if (newNeighbors.length >= minPts) {
@@ -211,7 +210,7 @@
                     
                     if (!clusters.flat().includes(neighbor)) {
                         cluster.push(neighbor);
-                        drawPoint(neighbor.x, neighbor.y, clusterColor);
+                        drawPoint(neighbor.x, neighbor.y, clusterColor); 
                     }
                 }
             }
@@ -221,14 +220,13 @@
                 visited.add(point);
                 const neighbors = regionQuery(point, epsilon);
 
-    
-                drawRadius(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)');
-                drawPoint(point.x, point.y, 'black');
+                drawCircle(point.x, point.y, epsilon, 'rgba(255, 0, 0, 0.3)');
+                drawPoint(point.x, point.y, 'black'); 
                 await delay(500);
 
                 if (neighbors.length < minPts) {
                     noise.push(point);
-                    drawPoint(point.x, point.y, 'gray');
+                    drawPoint(point.x, point.y, 'gray'); 
                 } else {
                     clusterCount++;
                     const clusterColor = `hsl(${(clusterCount * 100) % 360}, 100%, 50%)`;
@@ -242,7 +240,7 @@
             return { clusters, noise };
         }
 
-     
+        
         function visualizeResults({ clusters, noise }) {
             clearCanvas();
 
@@ -253,12 +251,12 @@
             noise.forEach(point => drawPoint(point.x, point.y, 'gray'));
         }
 
-    и
+        
         function delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        /
+       
         document.getElementById('runDBSCAN').addEventListener('click', async () => {
             const epsilon = parseFloat(document.getElementById('epsilon').value);
             const minPts = parseInt(document.getElementById('minPts').value, 10);
@@ -267,7 +265,7 @@
             visualizeResults(results);
         });
 
-        
+       
         document.getElementById('resetCanvas').addEventListener('click', () => {
             points.length = 0;
             clusterCount = 0;
@@ -275,7 +273,7 @@
             clearCanvas();
         });
 
-       
+        
         document.getElementById('resetColors').addEventListener('click', () => {
             clearCanvas();
             drawGrid();
